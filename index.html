@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modo Arcade · NIA 580</title>
+<style>
+  :root{
+    --bg:#f8fafc;
+    --panel:#ffffff;
+    --ink:#0f172a;
+    --ink-soft:#64748b;
+    --accent:#6366f1;
+    --accent-soft:#eef2ff;
+    --good:#10b981;
+    --good-bg:#ecfdf5;
+    --bad:#ef4444;
+    --bad-bg:#fef2f2;
+    --line:#e2e8f0;
+    --shadow:0 10px 30px -12px rgba(15,23,42,.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:28px 16px 56px;
+  }
+  .wrap{max-width:560px;margin:0 auto;}
+ 
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 18px;
+    box-shadow:var(--shadow);
+    margin-bottom:18px;
+  }
+  .lives{display:flex;gap:4px;font-size:19px;}
+  .lives .heart{transition:transform .2s ease;}
+  .lives .heart.lost{opacity:.25;}
+  .lives.pulse{animation:livePulse .5s ease;}
+  @keyframes livePulse{
+    0%{transform:scale(1);}
+    40%{transform:scale(1.25);}
+    100%{transform:scale(1);}
+  }
+  .heart.gained{animation:heartPop .5s ease;}
+  @keyframes heartPop{
+    0%{transform:scale(0.3) rotate(-10deg);opacity:0;}
+    60%{transform:scale(1.3) rotate(6deg);opacity:1;}
+    100%{transform:scale(1) rotate(0);}
+  }
+  .score-block{text-align:right;}
+  .score-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:700;}
+  .score-value{font-size:20px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;}
+  .streak-badge{
+    display:none;
+    align-items:center;
+    gap:4px;
+    background:linear-gradient(90deg,#f59e0b,#ef4444);
+    color:#fff;
+    font-size:11px;
+    font-weight:800;
+    padding:3px 9px;
+    border-radius:999px;
+    margin-top:3px;
+  }
+  .streak-badge.show{display:inline-flex;}
+ 
+  header.hero{
+    text-align:center;
+    margin-bottom:18px;
+  }
+  header.hero h1{
+    font-size:clamp(20px,3.6vw,25px);
+    font-weight:800;
+    margin:0 0 5px;
+    letter-spacing:-.02em;
+  }
+  header.hero p{
+    margin:0;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    line-height:1.5;
+  }
+ 
+  .progress-shell{
+    height:6px;
+    background:var(--line);
+    border-radius:999px;
+    overflow:hidden;
+    margin-bottom:22px;
+  }
+  .progress-fill{
+    height:100%;
+    width:0%;
+    background:var(--accent);
+    border-radius:999px;
+    transition:width .35s ease;
+  }
+ 
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:26px 24px;
+    box-shadow:var(--shadow);
+  }
+ 
+  .qmeta{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+  }
+  .qnum{
+    font-size:11.5px;
+    font-weight:800;
+    color:var(--accent);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .qtag{
+    font-size:11px;
+    color:var(--ink-soft);
+    background:var(--accent-soft);
+    padding:3px 10px;
+    border-radius:999px;
+    font-weight:600;
+  }
+ 
+  .qtext{
+    font-size:18.5px;
+    line-height:1.45;
+    font-weight:700;
+    margin:0 0 20px;
+    color:var(--ink);
+  }
+ 
+  .options{
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+  }
+  .opt{
+    text-align:left;
+    border:1.5px solid var(--line);
+    background:#fff;
+    border-radius:12px;
+    padding:13px 15px;
+    font-size:14.5px;
+    font-family:inherit;
+    color:var(--ink);
+    cursor:pointer;
+    display:flex;
+    gap:11px;
+    align-items:flex-start;
+    line-height:1.4;
+    transition:all .12s ease;
+  }
+  .opt:hover:not(.disabled){
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+  .opt .letter{
+    width:22px;height:22px;
+    flex-shrink:0;
+    border-radius:7px;
+    background:#f1f5f9;
+    color:var(--ink-soft);
+    font-weight:800;
+    font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .opt.correct{border-color:var(--good);background:var(--good-bg);}
+  .opt.correct .letter{background:var(--good);color:#fff;}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-bg);}
+  .opt.wrong .letter{background:var(--bad);color:#fff;}
+  .opt.disabled{cursor:default;}
+ 
+  .toast{
+    margin-top:16px;
+    padding:5px 0 0;
+    font-size:13.5px;
+    font-weight:800;
+    display:none;
+    align-items:center;
+    gap:6px;
+  }
+  .toast.show{display:flex;}
+  .toast.ok{color:var(--good);}
+  .toast.no{color:var(--bad);}
+ 
+  .feedback{
+    margin-top:12px;
+    padding:14px 16px;
+    border-radius:12px;
+    font-size:13.5px;
+    line-height:1.55;
+    display:none;
+    background:#f8fafc;
+    border:1px solid var(--line);
+    color:#334155;
+  }
+  .feedback.show{display:block;}
+  .feedback .ref{
+    display:inline-block;
+    margin-top:8px;
+    font-size:11px;
+    background:#e2e8f0;
+    padding:2px 8px;
+    border-radius:6px;
+    font-weight:700;
+    color:var(--ink-soft);
+  }
+ 
+  .nextbar{margin-top:18px;display:flex;justify-content:flex-end;}
+  .btn{
+    border:none;
+    border-radius:11px;
+    padding:11px 22px;
+    font-size:14px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+    background:var(--ink);
+    color:#fff;
+    display:none;
+  }
+  .btn.show{display:inline-flex;}
+  .btn:hover{background:#1e293b;}
+ 
+  /* result screens */
+  .result{text-align:center;}
+  .result .icon-big{font-size:50px;margin-bottom:8px;}
+  .result h2{margin:0 0 4px;font-size:22px;font-weight:800;}
+  .result .sub{color:var(--ink-soft);font-size:13.5px;margin-bottom:16px;}
+  .stat-row{
+    display:flex;
+    gap:10px;
+    margin:18px 0;
+  }
+  .stat{
+    flex:1;
+    background:#f8fafc;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 8px;
+  }
+  .stat .num{font-size:22px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;}
+  .stat .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:700;margin-top:2px;}
+ 
+  .breakdown{
+    text-align:left;
+    margin:18px 0;
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+  }
+  .brow{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-size:12.5px;
+    padding:9px 11px;
+    border-radius:10px;
+    background:#f8fafc;
+    border:1px solid var(--line);
+  }
+  .brow .dot{
+    width:20px;height:20px;
+    border-radius:50%;
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;
+    color:#fff;
+    font-weight:700;
+  }
+  .dot.ok{background:var(--good);}
+  .dot.no{background:var(--bad);}
+ 
+  .restart{background:var(--accent);}
+  .restart:hover{background:#4f46e5;}
+ 
+  footer{text-align:center;color:#94a3b8;font-size:11.5px;margin-top:18px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="lives" id="lives"></div>
+    <div class="score-block">
+      <div class="score-label">Puntos</div>
+      <div class="score-value" id="scoreValue">0</div>
+      <div class="streak-badge" id="streakBadge">🔥 Racha x<span id="streakNum">0</span></div>
+    </div>
+  </div>
+ 
+  <header class="hero">
+    <h1>Modo Arcade: NIA 580</h1>
+    <p>10 preguntas sobre Manifestaciones Escritas. Acumula puntos, mantén tu racha y cuida tus 3 vidas — cada acierto puede devolverte una vida perdida.</p>
+  </header>
+ 
+  <div class="progress-shell"><div class="progress-fill" id="progressFill"></div></div>
+ 
+  <div class="panel" id="panel"></div>
+ 
+  <footer>Basado en la NIA 580 «Manifestaciones escritas» (IAASB, aplicable a auditorías de periodos iniciados a partir del 15 de diciembre de 2009).</footer>
+</div>
+ 
+<script>
+const questions = [
+  {
+    tag:"Alcance",
+    text:"¿De qué trata específicamente la NIA 580?",
+    options:[
+      "De la responsabilidad del auditor de obtener manifestaciones escritas de la dirección y, cuando proceda, de los responsables del gobierno de la entidad.",
+      "De la responsabilidad exclusiva de la dirección de preparar los estados financieros.",
+      "De los procedimientos analíticos aplicados durante la planificación.",
+      "De la comunicación de las cuestiones clave de la auditoría."
+    ],
+    correct:0,
+    explain:"El apartado 1 delimita el alcance exactamente en esos términos.",
+    ref:"Apartado 1"
+  },
+  {
+    tag:"Evidencia de auditoría",
+    text:"¿Qué papel juegan las manifestaciones escritas como evidencia de auditoría?",
+    options:[
+      "Son evidencia de auditoría necesaria, pero por sí solas no proporcionan evidencia suficiente y adecuada sobre ninguna de las cuestiones a las que se refieren.",
+      "Sustituyen completamente a cualquier otro procedimiento de auditoría.",
+      "No se consideran evidencia de auditoría en ningún caso.",
+      "Solo son válidas si están notariadas."
+    ],
+    correct:0,
+    explain:"El apartado 4 aclara que son evidencia necesaria, pero insuficiente por sí sola.",
+    ref:"Apartado 4"
+  },
+  {
+    tag:"Objetivos",
+    text:"¿Cuáles son los objetivos del auditor según el apartado 6?",
+    options:[
+      "Detectar fraude, evaluar el control interno y emitir opinión sobre la gestión.",
+      "Obtener manifestaciones de la dirección sobre sus responsabilidades; fundamentar otra evidencia relevante; y responder adecuadamente a las manifestaciones proporcionadas o no proporcionadas.",
+      "Redactar la carta de encargo y definir los honorarios de auditoría.",
+      "Verificar el cumplimiento fiscal de la entidad."
+    ],
+    correct:1,
+    explain:"El apartado 6 fija estos tres objetivos en sus incisos (a), (b) y (c).",
+    ref:"Apartado 6"
+  },
+  {
+    tag:"Definición",
+    text:"¿Qué es, según el apartado 7, una \"manifestación escrita\"?",
+    options:[
+      "Cualquier declaración verbal de la dirección durante una entrevista de auditoría.",
+      "Un documento suscrito por la dirección y proporcionado al auditor para confirmar determinadas materias o soportar otra evidencia de auditoría (no incluye los EEFF ni los libros y registros).",
+      "El propio informe de auditoría firmado por el socio del encargo.",
+      "Un correo electrónico informal enviado por cualquier empleado de la entidad."
+    ],
+    correct:1,
+    explain:"El apartado 7 define la manifestación escrita y excluye expresamente los estados financieros, sus afirmaciones y los libros y registros.",
+    ref:"Apartado 7"
+  },
+  {
+    tag:"A quién se solicitan",
+    text:"¿A qué miembros de la dirección solicitará el auditor las manifestaciones escritas?",
+    options:[
+      "A cualquier empleado disponible en el momento de la solicitud.",
+      "Únicamente al departamento de contabilidad.",
+      "A los miembros de la dirección que tengan las responsabilidades adecuadas sobre los estados financieros y conocimiento de las cuestiones de que se trate.",
+      "Solo al auditor interno de la entidad."
+    ],
+    correct:2,
+    explain:"El apartado 9 exige dirigir la solicitud a quienes tienen la responsabilidad y el conocimiento adecuados.",
+    ref:"Apartado 9"
+  },
+  {
+    tag:"Preparación de EEFF",
+    text:"Según el apartado 10, ¿qué manifestación escrita solicitará el auditor sobre la preparación de los estados financieros?",
+    options:[
+      "Que la dirección ha cumplido su responsabilidad de la preparación de los EEFF de conformidad con el marco de información financiera aplicable, incluida su presentación fiel cuando proceda.",
+      "Que los EEFF han sido revisados por un segundo auditor independiente.",
+      "Que la dirección garantiza un resultado neto positivo para el próximo ejercicio.",
+      "Que todos los empleados han firmado un código de ética."
+    ],
+    correct:0,
+    explain:"El apartado 10 requiere esta manifestación específica sobre el cumplimiento de la responsabilidad de preparación de los EEFF.",
+    ref:"Apartado 10"
+  },
+  {
+    tag:"Fecha límite",
+    text:"¿Cuándo debe fecharse la carta de manifestaciones escritas, según el apartado 14?",
+    options:[
+      "Puede fecharse varios meses después del informe de auditoría, sin restricción.",
+      "Debe coincidir exactamente con la fecha de cierre del ejercicio.",
+      "Tan próxima como sea posible a la fecha del informe de auditoría, pero no posterior a ella.",
+      "Siempre debe fecharse un año calendario antes del informe de auditoría."
+    ],
+    correct:2,
+    explain:"El apartado 14 exige que la fecha sea lo más próxima posible al informe de auditoría, sin ser posterior.",
+    ref:"Apartado 14"
+  },
+  {
+    tag:"Forma",
+    text:"¿Qué forma deben adoptar, como regla general, las manifestaciones escritas según el apartado 15?",
+    options:[
+      "Un comunicado de prensa oficial de la entidad.",
+      "La forma de una carta de manifestaciones dirigida al auditor.",
+      "Una publicación en la memoria anual de la entidad.",
+      "Un acta notarial independiente del encargo de auditoría."
+    ],
+    correct:1,
+    explain:"El apartado 15 establece la carta de manifestaciones dirigida al auditor como forma general (con matices si existen declaraciones públicas equivalentes).",
+    ref:"Apartado 15"
+  },
+  {
+    tag:"Dudas sobre fiabilidad",
+    text:"Si el auditor tiene reservas sobre la competencia, integridad, valores éticos o diligencia de la dirección, ¿qué debe hacer según el apartado 16?",
+    options:[
+      "Ignorarlas si la carta de manifestaciones ya está firmada.",
+      "Determinar el efecto que dichas reservas pueden tener sobre la fiabilidad de las manifestaciones (verbales o escritas) y sobre la evidencia de auditoría en general.",
+      "Renunciar automáticamente al encargo sin más análisis.",
+      "Solicitar una segunda firma de un familiar del director financiero."
+    ],
+    correct:1,
+    explain:"El apartado 16 exige evaluar el efecto de esas reservas sobre la fiabilidad general de la evidencia.",
+    ref:"Apartado 16"
+  },
+  {
+    tag:"Denegación de opinión",
+    text:"¿Cuándo denegará el auditor la opinión sobre los estados financieros, de conformidad con el apartado 20?",
+    options:[
+      "Cuando concluya que existen suficientes dudas sobre la integridad de la dirección como para que las manifestaciones de los apartados 10 y 11 no sean fiables, o cuando la dirección no las facilite.",
+      "Cada vez que exista una sola incorrección inmaterial no corregida.",
+      "Cuando el informe de auditoría se entregue con un día de retraso.",
+      "Nunca; el apartado 20 no contempla la denegación de opinión."
+    ],
+    correct:0,
+    explain:"El apartado 20 exige denegar la opinión en esos dos supuestos concretos.",
+    ref:"Apartado 20"
+  }
+];
+ 
+const TOTAL_LIVES = 3;
+let current = 0;
+let score = 0;
+let streak = 0;
+let bestStreak = 0;
+let lives = TOTAL_LIVES;
+let correctCount = 0;
+let answers = [];
+let gameOver = false;
+ 
+const panel = document.getElementById('panel');
+const livesEl = document.getElementById('lives');
+const scoreValue = document.getElementById('scoreValue');
+const streakBadge = document.getElementById('streakBadge');
+const streakNum = document.getElementById('streakNum');
+const progressFill = document.getElementById('progressFill');
+ 
+function renderLives(recoveredIndex){
+  livesEl.innerHTML = '';
+  for(let i=0;i<TOTAL_LIVES;i++){
+    const span = document.createElement('span');
+    let cls = 'heart' + (i < lives ? '' : ' lost');
+    if(recoveredIndex !== undefined && i === recoveredIndex) cls += ' gained';
+    span.className = cls;
+    span.textContent = i < lives ? '❤️' : '🤍';
+    livesEl.appendChild(span);
+  }
+}
+ 
+function renderTopbar(recoveredIndex){
+  renderLives(recoveredIndex);
+  scoreValue.textContent = score;
+  if(streak >= 2){
+    streakBadge.classList.add('show');
+    streakNum.textContent = streak;
+  }else{
+    streakBadge.classList.remove('show');
+  }
+}
+ 
+function renderQuestion(){
+  progressFill.style.width = (current/questions.length*100) + '%';
+  const q = questions[current];
+  const letters = ['A','B','C','D'];
+  panel.innerHTML = `
+    <div class="qmeta">
+      <span class="qnum">Pregunta ${current+1} / ${questions.length}</span>
+      <span class="qtag">${q.tag}</span>
+    </div>
+    <p class="qtext">${q.text}</p>
+    <div class="options" id="optionsWrap">
+      ${q.options.map((opt,i)=>`
+        <button class="opt" data-i="${i}">
+          <span class="letter">${letters[i]}</span><span>${opt}</span>
+        </button>
+      `).join('')}
+    </div>
+    <div class="toast" id="toast"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="nextbar"><button class="btn" id="nextBtn">${current === questions.length-1 ? 'Ver puntuación final' : 'Siguiente pregunta'} →</button></div>
+  `;
+  renderTopbar();
+ 
+  const optBtns = panel.querySelectorAll('.opt');
+  optBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const chosen = parseInt(btn.dataset.i);
+      const correct = q.correct;
+      optBtns.forEach(b=>b.classList.add('disabled'));
+      optBtns[correct].classList.add('correct');
+      const isCorrect = chosen === correct;
+      if(!isCorrect) btn.classList.add('wrong');
+ 
+      const toast = document.getElementById('toast');
+      const fb = document.getElementById('feedback');
+ 
+      let recoveredIndex;
+      if(isCorrect){
+        streak++;
+        bestStreak = Math.max(bestStreak, streak);
+        const bonus = 100 + (streak-1)*20;
+        score += bonus;
+        correctCount++;
+        let lifeRecovered = false;
+        if(lives < TOTAL_LIVES){
+          recoveredIndex = lives;
+          lives++;
+          lifeRecovered = true;
+        }
+        toast.className = 'toast show ok';
+        toast.textContent = `✅ ¡Correcto! +${bonus} puntos${streak>=2?` (racha x${streak})`:''}${lifeRecovered?' · ❤️ +1 vida recuperada':''}`;
+      }else{
+        streak = 0;
+        lives--;
+        toast.className = 'toast show no';
+        toast.textContent = `❌ Incorrecto — pierdes una vida`;
+      }
+      answers.push({tag:q.tag, correct:isCorrect});
+      renderTopbar(recoveredIndex);
+      if(recoveredIndex !== undefined){
+        livesEl.classList.add('pulse');
+        setTimeout(()=>livesEl.classList.remove('pulse'), 500);
+      }
+ 
+      fb.className = 'feedback show';
+      fb.innerHTML = `${q.explain}<span class="ref">📎 ${q.ref}</span>`;
+ 
+      const nextBtn = document.getElementById('nextBtn');
+      if(lives <= 0){
+        nextBtn.textContent = 'Ver resultado final →';
+      }
+      nextBtn.classList.add('show');
+    });
+  });
+ 
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    if(lives <= 0){
+      renderGameOver();
+      return;
+    }
+    current++;
+    if(current < questions.length){
+      renderQuestion();
+    }else{
+      renderVictory();
+    }
+  });
+}
+ 
+function breakdownHTML(){
+  return answers.map((a,i)=>`
+    <div class="brow">
+      <span class="dot ${a.correct?'ok':'no'}">${a.correct?'✓':'✗'}</span>
+      <span>Pregunta ${i+1} · ${a.tag}</span>
+    </div>
+  `).join('');
+}
+ 
+function renderGameOver(){
+  progressFill.style.width = '100%';
+  panel.innerHTML = `
+    <div class="result">
+      <div class="icon-big">💥</div>
+      <h2>Juego terminado</h2>
+      <div class="sub">Te quedaste sin vidas en la pregunta ${answers.length} de ${questions.length}.</div>
+      <div class="stat-row">
+        <div class="stat"><div class="num">${score}</div><div class="lbl">Puntos</div></div>
+        <div class="stat"><div class="num">${correctCount}/${answers.length}</div><div class="lbl">Aciertos</div></div>
+        <div class="stat"><div class="num">${bestStreak}</div><div class="lbl">Mejor racha</div></div>
+      </div>
+      <div class="breakdown">${breakdownHTML()}</div>
+      <button class="btn restart show" id="restartBtn">↺ Reintentar desde el inicio</button>
+    </div>
+  `;
+  bindRestart();
+}
+ 
+function renderVictory(){
+  progressFill.style.width = '100%';
+  const pct = correctCount/questions.length;
+  let icon, title;
+  if(pct === 1){ icon='🏆'; title='¡Puntuación perfecta!'; }
+  else if(pct >= 0.8){ icon='🥇'; title='¡Excelente partida!'; }
+  else if(pct >= 0.6){ icon='🥈'; title='Buena partida, sigue practicando'; }
+  else { icon='🎮'; title='Partida completada'; }
+ 
+  panel.innerHTML = `
+    <div class="result">
+      <div class="icon-big">${icon}</div>
+      <h2>${title}</h2>
+      <div class="sub">Completaste las ${questions.length} preguntas con ${lives} vida(s) restante(s).</div>
+      <div class="stat-row">
+        <div class="stat"><div class="num">${score}</div><div class="lbl">Puntos</div></div>
+        <div class="stat"><div class="num">${correctCount}/${questions.length}</div><div class="lbl">Aciertos</div></div>
+        <div class="stat"><div class="num">${bestStreak}</div><div class="lbl">Mejor racha</div></div>
+      </div>
+      <div class="breakdown">${breakdownHTML()}</div>
+      <button class="btn restart show" id="restartBtn">↺ Jugar de nuevo</button>
+    </div>
+  `;
+  bindRestart();
+}
+ 
+function bindRestart(){
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    current = 0; score = 0; streak = 0; bestStreak = 0; lives = TOTAL_LIVES; correctCount = 0; answers = [];
+    renderQuestion();
+  });
+}
+ 
+renderQuestion();
+</script>
+</body>
+</html>
